@@ -10,8 +10,7 @@ const TextBox = ({ onContentChange }) => {
   };
 
   return (
-    <div className="flex flex-col items-center space-y-2 w-full px-4">
-      <label className="text-green-500 text-lg">❯ Newsletter Content</label>
+    <div className="flex flex-col items-center space-y-10 w-full px-10">
       <textarea
         className="w-full h-40 p-2 bg-black border border-green-500 text-green-500 rounded outline-none focus:ring-2 focus:ring-green-500"
         value={content}

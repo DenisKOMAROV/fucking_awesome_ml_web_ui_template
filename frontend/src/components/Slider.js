@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 const Slider = ({ min = 0, max = 100, onChange }) => {
-  const [value, setValue] = useState(50); // Default to 50%
+  const [value, setValue] = useState(69); // Default to 69%
 
   const handleChange = (event) => {
     const newValue = event.target.value;
@@ -10,7 +10,7 @@ const Slider = ({ min = 0, max = 100, onChange }) => {
   };
 
   return (
-    <div className="flex flex-col items-center space-y-2">
+    <div className="flex flex-col items-center space-y-5">
       <label className="text-green-500">Response Rate: {value}%</label>
       <input
         type="range"

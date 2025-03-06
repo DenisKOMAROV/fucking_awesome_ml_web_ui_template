@@ -1,26 +1,36 @@
 import { useState } from "react";
 
 const Dropdown = ({ options, onSelect }) => {
-  const [selected, setSelected] = useState(options[0]); // Default to first option
+  const [selected, setSelected] = useState(options[0]);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const handleSelect = (event) => {
-    setSelected(event.target.value);
-    onSelect(event.target.value);
+  const handleSelect = (option) => {
+    setSelected(option);
+    onSelect(option);
+    setIsOpen(false);
   };
 
   return (
-    <div className="border border-green-500 p-2 rounded text-green-500 bg-black">
-      <select
-        className="bg-black text-green-500 outline-none"
-        value={selected}
-        onChange={handleSelect}
+    <div className="relative inline-block w-full">
+      <div
+        className="bg-black text-green-500 border border-green-500 px-4 py-2 cursor-pointer hover:bg-green-500 hover:text-black transition"
+        onClick={() => setIsOpen(!isOpen)}
       >
-        {options.map((option, index) => (
-          <option key={index} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+        ❯ {selected}
+      </div>
+      {isOpen && (
+        <div className="absolute left-0 w-full bg-black border border-green-500 mt-1">
+          {options.map((option, index) => (
+            <div
+              key={index}
+              className="px-4 py-2 hover:bg-green-500 hover:text-black cursor-pointer transition"
+              onClick={() => handleSelect(option)}
+            >
+              ❯ {option}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
