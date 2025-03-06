@@ -6,7 +6,7 @@ import TextBox from "./components/TextBox";
 import Button from "./components/Button";
 
 function App() {
-  const categories = ["Webinar", "Digest Analitycs", "Digest Product", "Ads", "Offline Event", "Other",];
+  const categories = ["Webinar", "Digest Analitycs", "Digest Product", "Ads", "Offline Event", "Other", "Fucking_Category"];
   const [selectedCategory, setSelectedCategory] = useState(categories[0]);
   const [responseRate, setResponseRate] = useState(69);
   const [filesGenerated, setFilesGenerated] = useState(false);
