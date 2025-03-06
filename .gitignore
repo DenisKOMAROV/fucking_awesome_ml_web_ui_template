@@ -1,3 +1,7 @@
+storage/
+backend/uploads/
+
+
 ### react ###
 .DS_*
 *.log
