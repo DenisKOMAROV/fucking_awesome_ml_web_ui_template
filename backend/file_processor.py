@@ -9,16 +9,17 @@ mail_file_content_mockup = "id,email\n1,test1@mail.com\n2,test2@mail.com"
 wa_file_content_mockup = "id,phone\n1,+1234567890\n2,+0987654321"
 ignore_file_content_mockup = "id,reason\n1,No interaction\n2,Opted out"
 
+
 def read_uid_file(file_path):
     """ Reads UID file and returns a list of UIDs. Supports CSV, JSON, and XLSX. """
     if file_path.endswith(".csv"):
-        df = pd.read_csv(file_path)
+        df = pd.read_csv(file_path, usecols=["Uid"])  # Read only 'Uid' column
     elif file_path.endswith(".json"):
         with open(file_path, "r") as f:
             data = json.load(f)
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(data, columns=["Uid"])  # Ensure only 'Uid' column is read
     elif file_path.endswith(".xlsx"):
-        df = pd.read_excel(file_path, engine="openpyxl")  # Safe XLSX reading
+        df = pd.read_excel(file_path, engine="openpyxl", usecols=["Uid"])  # Read only 'Uid' column
     else:
         raise ValueError("Unsupported file format. Please upload CSV, JSON, or XLSX.")
 
