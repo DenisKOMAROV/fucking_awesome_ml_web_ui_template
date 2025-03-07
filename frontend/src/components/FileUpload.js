@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const FileUpload = ({ onFileSelect }) => {
+const FileUpload = ({ onFileSelect, fileUploading }) => {
   const [fileName, setFileName] = useState("No file selected");
 
   const handleFileChange = (event) => {
@@ -15,9 +15,13 @@ const FileUpload = ({ onFileSelect }) => {
     <div className="flex flex-col items-center space-y-2">
       <label
         htmlFor="file-upload"
-        className="cursor-pointer bg-black text-green-500 border border-green-500 px-4 py-2 hover:bg-green-500 hover:text-black transition"
+        className={`cursor-pointer px-4 py-2 border transition ${
+          fileUploading
+            ? "border-gray-500 text-gray-500 cursor-not-allowed"
+            : "bg-black text-green-500 border border-green-500 hover:bg-green-500 hover:text-black"
+        }`}
       >
-        Select File
+        {fileUploading ? "❯ Loading..." : "❯ Select File"}
       </label>
       <input
         type="file"
@@ -25,8 +29,9 @@ const FileUpload = ({ onFileSelect }) => {
         id="file-upload"
         className="hidden"
         onChange={handleFileChange}
+        disabled={fileUploading} // Prevent selecting a new file while uploading
       />
-      <p className="text-sm text-gray-400">{fileName}</p>
+      <p className="text-sm text-gray-400">{fileUploading ? "Uploading..." : fileName}</p>
     </div>
   );
 };
