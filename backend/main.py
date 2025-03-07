@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware  # Import CORS Middleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 import json
@@ -8,6 +9,15 @@ import shutil
 import pandas as pd
 
 app = FastAPI()
+
+# ✅ Enable CORS to allow frontend requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Allow frontend to access backend
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, OPTIONS, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 # Global variable for storing last selected user data
 LATEST_METADATA_FILE = "latest_metadata.json"
@@ -33,7 +43,7 @@ def upload_uid_file(uid_file: UploadFile = File(...)):
 @app.post("/select_users")
 def select_users(request: UserSelectionRequest):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    category = request.category
+    category = request.category.replace(" ", "_")  # Replace spaces with underscores
     open_rate = request.open_rate
     newsletter_content = request.newsletter_content if request.newsletter_content else ""
     file_id = request.file_id
@@ -77,7 +87,6 @@ def select_users(request: UserSelectionRequest):
 
     return JSONResponse(content=stats)
 
-
 # Download User Groups - Generates CSV files and ZIP archive
 @app.get("/download_user_groups")
 def download_user_groups():
@@ -88,11 +97,12 @@ def download_user_groups():
         metadata = json.load(f)
 
     timestamp = metadata["datetime"]
-    category = metadata["category"]
-    stats = metadata["stats"]
-    newsletter_content = metadata["newsletter_content"]
-
+    category = metadata["category"].replace(" ", "_")  # Ensure filename compatibility
     folder_name = f"{timestamp}_{category}"
+    storage_path = "storage"
+    os.makedirs(storage_path, exist_ok=True)  # Ensure storage directory exists
+
+    # Ensure folder exists for ZIP creation
     os.makedirs(folder_name, exist_ok=True)
 
     # Mock CSV file contents
@@ -112,11 +122,13 @@ def download_user_groups():
     with open(metadata_path, "w") as f:
         json.dump(metadata, f, indent=4)
 
-    # Create ZIP file
-    zip_filename = f"{folder_name}.zip"
+    # Create ZIP file with formatted name inside `storage/`
+    zip_filename = f"{folder_name}_user_groups.zip"
+    zip_path = os.path.join(storage_path, zip_filename)
     shutil.make_archive(folder_name, 'zip', folder_name)
+    shutil.move(f"{folder_name}.zip", zip_path)  # Move ZIP to storage directory
 
     # Cleanup: remove temporary folder after zipping
     shutil.rmtree(folder_name)
 
-    return FileResponse(zip_filename, media_type='application/zip', filename=zip_filename)
+    return FileResponse(zip_path, media_type='application/zip', filename=zip_filename)

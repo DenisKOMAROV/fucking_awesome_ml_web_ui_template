@@ -1,35 +1,96 @@
 import { useState } from "react";
+import axios from "axios";
 import Dropdown from "./components/Dropdown";
 import Slider from "./components/Slider";
 import FileUpload from "./components/FileUpload";
 import TextBox from "./components/TextBox";
 import Button from "./components/Button";
 
+const API_BASE_URL = "http://localhost:8000"; // Backend URL
+
 function App() {
   const categories = ["Webinar", "Digest Analitycs", "Digest Product", "Ads", "Offline Event", "Other", "Fucking_Category"];
   const [selectedCategory, setSelectedCategory] = useState(categories[0]);
   const [responseRate, setResponseRate] = useState(69);
-  const [filesGenerated, setFilesGenerated] = useState(false);
   const [newsletterContent, setNewsletterContent] = useState("");
+  const [fileId, setFileId] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [filesGenerated, setFilesGenerated] = useState(false);
 
+  // Upload UID file to backend
+  const handleFileUpload = async (file) => {
+    const formData = new FormData();
+    formData.append("uid_file", file);
 
-  const handleSelectUsers = () => {
-    alert(`Selecting users for ${selectedCategory} with ${responseRate}% response rate.`);
-    setFilesGenerated(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/upload_uid_file`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setFileId(response.data.file_id);
+      alert("File uploaded successfully!");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Failed to upload file.");
+    }
   };
 
-  const handleDownloadGroups = () => {
+  // Fetch stats from backend
+  const handleSelectUsers = async () => {
+    setLoading(true);
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/select_users`, {
+        category: selectedCategory,
+        open_rate: responseRate,
+        newsletter_content: newsletterContent,
+        file_id: fileId,
+      });
+
+      setStats(response.data);
+      setFilesGenerated(true);
+    } catch (error) {
+      console.error("Error selecting users:", error);
+      alert("Failed to select users.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Download user groups ZIP file
+  const handleDownloadGroups = async () => {
     if (!filesGenerated) return;
-    alert("Downloading user groups...");
+  
+    try {
+      const response = await axios.get(`${API_BASE_URL}/download_user_groups`, { responseType: "blob" });
+  
+      // Extract filename from Content-Disposition header
+      const contentDisposition = response.headers["content-disposition"];
+      const match = contentDisposition && contentDisposition.match(/filename="(.+)"/);
+      const filename = match ? match[1] : "user_groups.zip";  // Fallback to default name
+  
+      // Create a download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error downloading user groups:", error);
+      alert("Failed to download user groups.");
+    }
   };
+  
 
   return (
     <div className="h-screen bg-black text-green-500 flex flex-col items-center justify-start space-y-10 p-10">
       <h1 className="text-3xl font-bold">❯ Welcome to the fucking awesome model service!</h1>
       <h2 className="text-2xl mt-2">❯ Newsletter Content</h2>
-        <TextBox onContentChange={setNewsletterContent} />
-      
-      <div className="flex w-full justify-between px-10">        
+      <TextBox onContentChange={setNewsletterContent} />
+
+      <div className="flex w-full justify-between px-10">
         <div className="w-1/3 space-y-4">
           <h2 className="text-2xl">❯ Select a Category</h2>
           <Dropdown options={categories} onSelect={setSelectedCategory} />
@@ -43,13 +104,24 @@ function App() {
         <div className="w-1/3 text-center space-y-4">
           <h2 className="text-2xl">❯ Upload UID File</h2>
           <p className="text-green-500">Select File (CSV, TXT, XLS)</p>
-          <FileUpload onFileSelect={(file) => console.log("Uploaded file:", file)} />
+          <FileUpload onFileSelect={handleFileUpload} />
         </div>
       </div>
 
+      {/* Display Stats (After Selecting Users) */}
+      {stats && (
+        <div className="w-full text-center border border-green-500 p-4 mt-6">
+          <h2 className="text-xl">❯ Stats Summary</h2>
+          <p>Total Users: {stats.total_users}</p>
+          <p>Expected Open Rate: {stats.expected_open_rate}%</p>
+          <p>Mail Group: {stats.mail_group}</p>
+          <p>WhatsApp Group: {stats.whatsapp_group}</p>
+          <p>Ignored Group: {stats.ignored_group}</p>
+        </div>
+      )}
 
       <div className="mt-6 space-x-4 flex">
-        <Button text="Select Users" onClick={handleSelectUsers} />
+        <Button text={loading ? "Loading..." : "Select Users"} onClick={handleSelectUsers} />
         <button
           onClick={handleDownloadGroups}
           disabled={!filesGenerated}
