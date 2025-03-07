@@ -80,6 +80,7 @@ def upload_uid_file(uid_file: UploadFile = File(...)):
             buffer.write(uid_file.file.read())
 
         database["uids"] = read_uid_file(file_id)
+        database["file_id"] = file_id
 
         logging.info(f"File uploaded successfully: {file_id}")
         return {"message": "File uploaded successfully.", "file_id": file_id}  # ✅ Now we return the correct file_id
