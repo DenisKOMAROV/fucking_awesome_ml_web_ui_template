@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware  # Import CORS Middleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 import os
+import time
 import json
 import logging
 from datetime import datetime
@@ -77,6 +78,7 @@ def select_users(request: UserSelectionRequest):
     if database["uids"] is None:
         raise HTTPException(status_code=400, detail="No UID file uploaded. Please upload a file first.")
     
+    time.sleep(5)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     category = request.category.replace(" ", "_")
     open_rate = request.open_rate
