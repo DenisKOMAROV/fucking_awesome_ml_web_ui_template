@@ -17,10 +17,14 @@ function App() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [filesGenerated, setFilesGenerated] = useState(false);
-  const [zipFilename, setZipFilename] = useState(null);  // ✅ Added missing useState
+  const [zipFilename, setZipFilename] = useState(null);
+  const [fileUploading, setFileUploading] = useState(false);
 
   // Upload UID file to backend
   const handleFileUpload = async (file) => {
+    console.log("Uploading file:", file.name);
+    setFileUploading(true);
+    setFileId(null); // Reset fileId to disable Select Users during upload
     const formData = new FormData();
     formData.append("uid_file", file);
 
@@ -28,16 +32,31 @@ function App() {
       const response = await axios.post(`${API_BASE_URL}/upload_uid_file`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setFileId(response.data.file_id);
+      console.log("File uploaded successfully, received fileId:", response.data.file_id);
+      
+      if (response.data.file_id) {
+        console.log("✅ Received valid fileId:", response.data.file_id);
+        setFileId(response.data.file_id);
+      } else {
+          console.error("❌ fileId is missing in backend response:", response.data);
+      }
+      
       alert("File uploaded successfully!");
     } catch (error) {
       console.error("Error uploading file:", error);
       alert("Failed to upload file.");
+    } finally {
+      setFileUploading(false);
     }
   };
 
   // Fetch stats from backend
   const handleSelectUsers = async () => {
+    console.log("Attempting to select users with fileId:", fileId);
+    if (!fileId) {
+      console.warn("Select Users button clicked, but no fileId is set.");
+      return; // Prevent clicking before file is uploaded
+    }
     setLoading(true);
 
     try {
@@ -48,8 +67,9 @@ function App() {
         file_id: fileId,
       });
 
+      console.log("Users selected successfully, received stats:", response.data.stats);
       setStats(response.data.stats);
-      setZipFilename(response.data.zip_filename);  // ✅ Store zip filename for download
+      setZipFilename(response.data.zip_filename);
       setFilesGenerated(true);
     } catch (error) {
       console.error("Error selecting users:", error);
@@ -61,6 +81,7 @@ function App() {
 
   // Download user groups ZIP file
   const handleDownloadGroups = async () => {
+    console.log("Attempting to download file:", zipFilename);
     if (!filesGenerated || !zipFilename) return;
 
     try {
@@ -98,15 +119,15 @@ function App() {
         </div>
 
         <div className="w-1/3 text-center space-y-4">
-          <h2 className="text-2xl">❯ Upload UID File</h2>
+          <h2 className="text-2xl">❯ Upload UID File </h2>
           <p className="text-green-500">Select File (CSV, JSON, XLS)</p>
-          <FileUpload onFileSelect={handleFileUpload} />
+          <FileUpload onFileSelect={handleFileUpload} fileUploading={fileUploading} />
         </div>
       </div>
 
       {/* Display Stats (After Selecting Users) */}
       {stats && (
-        <div className="w-full text-center border border-green-500 p-4 mt-6">
+        <div className="w-full text-left border border-green-500 rounded  p-5 mt-2 space-y-0 space-x-6">
           <h2 className="text-xl">❯ Stats Summary</h2>
           <p>Total Users: {stats.total_users}</p>
           <p>Expected Open Rate: {stats.expected_open_rate}%</p>
@@ -117,7 +138,16 @@ function App() {
       )}
 
       <div className="mt-6 space-x-4 flex">
-        <Button text={loading ? "Loading..." : "Select Users"} onClick={handleSelectUsers} />
+        <button
+          onClick={handleSelectUsers}
+          disabled={!fileId || fileUploading || loading}
+          className={`px-6 py-2 text-lg border ${!fileId || fileUploading || loading ? "border-gray-500 text-gray-500 cursor-not-allowed" : "bg-black text-green-500 border-green-500 hover:bg-green-500 hover:text-black transition"}`}
+        >
+          {/* ❯ Select Users */}
+          {loading ? "❯ Loading..." : "❯ Select Users"}
+
+        </button>
+
         <button
           onClick={handleDownloadGroups}
           disabled={!filesGenerated || !zipFilename}
