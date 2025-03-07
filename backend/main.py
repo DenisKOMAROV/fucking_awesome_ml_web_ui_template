@@ -21,9 +21,6 @@ STORAGE_DIR = os.path.join(BASE_DIR, "storage")
 for directory in [LOG_DIR, UPLOADS_DIR, STORAGE_DIR]:
     os.makedirs(directory, exist_ok=True)
 
-# Global variables for storing paths
-LATEST_METADATA_FILE = os.path.join(BASE_DIR, "latest_metadata.json")
-
 # Setup logging
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, "backend.log")
@@ -46,7 +43,21 @@ app.add_middleware(
 
 # Store uploaded UID file content in memory
 database = {
-    "uids": None
+    "timestamp": None,
+    "stats": None,  # Store stats after selecting users
+    "uids": None,
+    "category": None,  # Store category selected
+    "newsletter_content": None,  # Store newsletter content
+    "file_id": None,  # Store file_id
+    "model_output": None,  # Store model output
+}
+
+stats_mockup = {
+        "total_users": 69696,
+        "expected_open_rate": 69,
+        "mail_group": 6969,
+        "whatsapp_group": 6969,
+        "ignored_group": 69,
 }
 
 # Request model for selecting users
@@ -59,6 +70,10 @@ class UserSelectionRequest(BaseModel):
 # Upload UID File separately and store in memory
 @app.post("/upload_uid_file")
 def upload_uid_file(uid_file: UploadFile = File(...)):
+    # get uid file
+    # read uid file
+    # store uid file in memory
+    # return file_id
     try:
         file_id = os.path.join(UPLOADS_DIR, uid_file.filename)  # ✅ Standardized file_id
         with open(file_id, "wb") as buffer:
@@ -75,62 +90,41 @@ def upload_uid_file(uid_file: UploadFile = File(...)):
 # Select Users - Runs model inference using stored UID data
 @app.post("/select_users")
 def select_users(request: UserSelectionRequest):
+    # check if uid file is uploaded
+    # if not, return error
+    # if yes, continue
+    # parse request -> into separate function
+    # return stats to frontend, 
     if database["uids"] is None:
         raise HTTPException(status_code=400, detail="No UID file uploaded. Please upload a file first.")
-    
+
     time.sleep(5)
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    category = request.category.replace(" ", "_")
-    open_rate = request.open_rate
-    newsletter_content = request.newsletter_content if request.newsletter_content else ""
-    file_id = request.file_id  
 
+    database["timestamp"] = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    database["category"] = request.category.replace(" ", "_")
+    database["open_rate"] = request.open_rate
+    database["newsletter_content"] = request.newsletter_content if request.newsletter_content else ""
 
-    logging.info(f"Processing user selection: category={category}, open_rate={open_rate}")
-    
-    stats = {
-        "total_users": 69696,
-        "expected_open_rate": open_rate,
-        "mail_group": 6969,
-        "whatsapp_group": 6969,
-        "ignored_group": 69,
-    }
-    
-    metadata = {
-        "datetime": timestamp,
-        "category": category,
-        "stats": stats,
-        "newsletter_content": newsletter_content,
-        "original_uids": database["uids"],
-        "file_id": file_id,  
-    }
+    logging.info(f"Processing user selection: category={database['category']}, open_rate={database['open_rate']}")
 
-    save_metadata(metadata, os.path.join(STORAGE_DIR, "latest_metadata.json"))
-    logging.info("Metadata saved successfully.")
-    
-    return JSONResponse(content={"stats": stats, "zip_filename": f"{timestamp}_{category}_user_groups.zip"})
+    # Mock stats (replace with model inference later)
+    stats = stats_mockup
+    database["stats"] = stats
+
+    logging.info(f"Generated user selection stats: {stats}")
+
+    return JSONResponse(content={"stats": stats, "zip_filename": f"{database['timestamp']}_{database['category']}_user_groups.zip"})
+
 
 # Download User Groups - Generates CSV files and ZIP archive
 @app.get("/download_user_groups")
 def download_user_groups():
-    if not os.path.exists(LATEST_METADATA_FILE):
-        logging.error("Metadata file not found. Cannot proceed with download.")
+    if database["uids"] is None:
+        logging.error("No UID file uploaded. Cannot proceed with download.")
         raise HTTPException(status_code=404, detail="No user selection data found. Run /select_users first.")
 
-    with open(LATEST_METADATA_FILE, "r") as f:
-        metadata = json.load(f)
-
-    timestamp = metadata["datetime"]
-    category = metadata["category"].replace(" ", "_")  # Ensure filename compatibility
-    folder_name = f"{timestamp}_{category}"
-    zip_filename = f"{folder_name}_user_groups.zip"
-    zip_path = os.path.join(STORAGE_DIR, zip_filename)
-
-    logging.info(f"Generating user group files for {folder_name}")
-    generate_user_group_files(folder_name, timestamp, category, metadata)
-
-    logging.info(f"Creating ZIP archive for {folder_name}")
-    zip_path, zip_filename = create_zip_file(folder_name, STORAGE_DIR)
+    logging.info(f"Generating user group files")
+    zip_path, zip_filename = generate_user_group_files(database, STORAGE_DIR)
 
     logging.info(f"ZIP file ready for download: {zip_filename}")
     return download_zip_file(zip_path, zip_filename)
