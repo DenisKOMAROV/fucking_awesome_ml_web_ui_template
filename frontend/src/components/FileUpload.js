@@ -21,7 +21,7 @@ const FileUpload = ({ onFileSelect }) => {
       </label>
       <input
         type="file"
-        accept=".csv,.txt,.xls,.xlsx"
+        accept=".csv,.json,.xls,.xlsx"
         id="file-upload"
         className="hidden"
         onChange={handleFileChange}

@@ -99,7 +99,7 @@ function App() {
 
         <div className="w-1/3 text-center space-y-4">
           <h2 className="text-2xl">❯ Upload UID File</h2>
-          <p className="text-green-500">Select File (CSV, TXT, XLS)</p>
+          <p className="text-green-500">Select File (CSV, JSON, XLS)</p>
           <FileUpload onFileSelect={handleFileUpload} />
         </div>
       </div>
