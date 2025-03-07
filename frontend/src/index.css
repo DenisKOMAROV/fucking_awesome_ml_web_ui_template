@@ -5,3 +5,27 @@
 body {
   @apply font-terminal bg-black text-green-500;
 }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px; /* Adjust width */
+}
+
+::-webkit-scrollbar-track {
+  background: black; /* Track background */
+}
+
+::-webkit-scrollbar-thumb {
+  background: green; /* Scroll thumb color */
+  border-radius: 0px; /* ❗ Square edges */
+  border: 2px solid black; /* Adds contrast */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: limegreen; /* Lighter green on hover */
+}
+
+/* Enable smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
