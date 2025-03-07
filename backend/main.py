@@ -43,6 +43,10 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
+# Store uploaded UID file content in memory
+database = {
+    "uids": None
+}
 
 # Request model for selecting users
 class UserSelectionRequest(BaseModel):
@@ -51,61 +55,57 @@ class UserSelectionRequest(BaseModel):
     newsletter_content: str = None
     file_id: str = None  # Reference to uploaded file
 
-# Upload UID File separately and return file ID
+# Upload UID File separately and store in memory
 @app.post("/upload_uid_file")
 def upload_uid_file(uid_file: UploadFile = File(...)):
-    file_path = os.path.join(UPLOADS_DIR, uid_file.filename)
-    with open(file_path, "wb") as buffer:
-        buffer.write(uid_file.file.read())
-    logging.info(f"File uploaded: {file_path}")
-    return {"file_id": file_path}
+    try:
+        file_id = os.path.join(UPLOADS_DIR, uid_file.filename)  # ✅ Standardized file_id
+        with open(file_id, "wb") as buffer:
+            buffer.write(uid_file.file.read())
 
-# Select Users - Runs model inference and returns stats
+        database["uids"] = read_uid_file(file_id)
+
+        logging.info(f"File uploaded successfully: {file_id}")
+        return {"message": "File uploaded successfully.", "file_id": file_id}  # ✅ Now we return the correct file_id
+    except Exception as e:
+        logging.error(f"Error processing file: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error processing file: {str(e)}")
+
+# Select Users - Runs model inference using stored UID data
 @app.post("/select_users")
 def select_users(request: UserSelectionRequest):
+    if database["uids"] is None:
+        raise HTTPException(status_code=400, detail="No UID file uploaded. Please upload a file first.")
+    
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    category = request.category.replace(" ", "_")  # Replace spaces with underscores
+    category = request.category.replace(" ", "_")
     open_rate = request.open_rate
     newsletter_content = request.newsletter_content if request.newsletter_content else ""
-    file_id = request.file_id
+    file_id = request.file_id  
+
 
     logging.info(f"Processing user selection: category={category}, open_rate={open_rate}")
-
-    # Process UID file if provided
-    try:
-        original_uids = read_uid_file(file_id) if file_id and os.path.exists(file_id) else "Client data placeholder"
-        logging.info(f"Read UID file successfully: {file_id}")
-    except Exception as e:
-        logging.error(f"Error reading UID file: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Error reading UID file: {str(e)}")
-
-    # Mock model inference (Replace this with real logic later)
-    total_users = 69696
-    mail_group = 6969
-    whatsapp_group = 6969
-    ignored_group = 69
-
+    
     stats = {
-        "total_users": total_users,
+        "total_users": 69696,
         "expected_open_rate": open_rate,
-        "mail_group": mail_group,
-        "whatsapp_group": whatsapp_group,
-        "ignored_group": ignored_group,
+        "mail_group": 6969,
+        "whatsapp_group": 6969,
+        "ignored_group": 69,
     }
-
-    logging.info(f"Generated user selection stats: {stats}")
-
-    # Save metadata for later use in file generation
+    
     metadata = {
         "datetime": timestamp,
         "category": category,
         "stats": stats,
         "newsletter_content": newsletter_content,
-        "original_uids": original_uids,
+        "original_uids": database["uids"],
+        "file_id": file_id,  
     }
-    save_metadata(metadata, LATEST_METADATA_FILE)
-    logging.info("Metadata saved successfully.")
 
+    save_metadata(metadata, os.path.join(STORAGE_DIR, "latest_metadata.json"))
+    logging.info("Metadata saved successfully.")
+    
     return JSONResponse(content={"stats": stats, "zip_filename": f"{timestamp}_{category}_user_groups.zip"})
 
 # Download User Groups - Generates CSV files and ZIP archive
