@@ -2,11 +2,35 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware  # Import CORS Middleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
-import json
 import os
+import json
+import logging
 from datetime import datetime
-import shutil
-import pandas as pd
+from file_processor import read_uid_file, save_metadata, generate_user_group_files, create_zip_file, download_zip_file
+
+# Get the absolute directory of main.py
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# Define paths relative to BASE_DIR
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+STORAGE_DIR = os.path.join(BASE_DIR, "storage")
+
+# Ensure directories exist
+for directory in [LOG_DIR, UPLOADS_DIR, STORAGE_DIR]:
+    os.makedirs(directory, exist_ok=True)
+
+# Global variables for storing paths
+LATEST_METADATA_FILE = os.path.join(BASE_DIR, "latest_metadata.json")
+
+# Setup logging
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "backend.log")
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 app = FastAPI()
 
@@ -19,12 +43,6 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-# Global variable for storing last selected user data
-LATEST_METADATA_FILE = "latest_metadata.json"
-UPLOADS_DIR = "uploads"
-STORAGE_DIR = "storage"
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-os.makedirs(STORAGE_DIR, exist_ok=True)
 
 # Request model for selecting users
 class UserSelectionRequest(BaseModel):
@@ -39,6 +57,7 @@ def upload_uid_file(uid_file: UploadFile = File(...)):
     file_path = os.path.join(UPLOADS_DIR, uid_file.filename)
     with open(file_path, "wb") as buffer:
         buffer.write(uid_file.file.read())
+    logging.info(f"File uploaded: {file_path}")
     return {"file_id": file_path}
 
 # Select Users - Runs model inference and returns stats
@@ -50,16 +69,15 @@ def select_users(request: UserSelectionRequest):
     newsletter_content = request.newsletter_content if request.newsletter_content else ""
     file_id = request.file_id
 
-    # If a file was uploaded, process it
-    original_uids = None
-    if file_id and os.path.exists(file_id):
-        try:
-            df = pd.read_csv(file_id)
-            original_uids = df.iloc[:, 0].tolist()  # Assume first column contains UIDs
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Error reading UID file: {str(e)}")
-    else:
-        original_uids = "Client data placeholder"
+    logging.info(f"Processing user selection: category={category}, open_rate={open_rate}")
+
+    # Process UID file if provided
+    try:
+        original_uids = read_uid_file(file_id) if file_id and os.path.exists(file_id) else "Client data placeholder"
+        logging.info(f"Read UID file successfully: {file_id}")
+    except Exception as e:
+        logging.error(f"Error reading UID file: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error reading UID file: {str(e)}")
 
     # Mock model inference (Replace this with real logic later)
     total_users = 69696
@@ -75,6 +93,8 @@ def select_users(request: UserSelectionRequest):
         "ignored_group": ignored_group,
     }
 
+    logging.info(f"Generated user selection stats: {stats}")
+
     # Save metadata for later use in file generation
     metadata = {
         "datetime": timestamp,
@@ -83,9 +103,8 @@ def select_users(request: UserSelectionRequest):
         "newsletter_content": newsletter_content,
         "original_uids": original_uids,
     }
-
-    with open(LATEST_METADATA_FILE, "w") as f:
-        json.dump(metadata, f, indent=4)
+    save_metadata(metadata, LATEST_METADATA_FILE)
+    logging.info("Metadata saved successfully.")
 
     return JSONResponse(content={"stats": stats, "zip_filename": f"{timestamp}_{category}_user_groups.zip"})
 
@@ -93,6 +112,7 @@ def select_users(request: UserSelectionRequest):
 @app.get("/download_user_groups")
 def download_user_groups():
     if not os.path.exists(LATEST_METADATA_FILE):
+        logging.error("Metadata file not found. Cannot proceed with download.")
         raise HTTPException(status_code=404, detail="No user selection data found. Run /select_users first.")
 
     with open(LATEST_METADATA_FILE, "r") as f:
@@ -104,30 +124,11 @@ def download_user_groups():
     zip_filename = f"{folder_name}_user_groups.zip"
     zip_path = os.path.join(STORAGE_DIR, zip_filename)
 
-    os.makedirs(folder_name, exist_ok=True)
+    logging.info(f"Generating user group files for {folder_name}")
+    generate_user_group_files(folder_name, timestamp, category, metadata)
 
-    # Mock CSV file contents
-    csv_data = {
-        f"{folder_name}/{timestamp}_{category}_mail.csv": "id,email\n1,test1@mail.com\n2,test2@mail.com",
-        f"{folder_name}/{timestamp}_{category}_wa.csv": "id,phone\n1,+1234567890\n2,+0987654321",
-        f"{folder_name}/{timestamp}_{category}_ignore.csv": "id,reason\n1,No interaction\n2,Opted out",
-    }
+    logging.info(f"Creating ZIP archive for {folder_name}")
+    zip_path, zip_filename = create_zip_file(folder_name, STORAGE_DIR)
 
-    # Create mock CSV files
-    for filename, content in csv_data.items():
-        with open(filename, "w") as f:
-            f.write(content)
-
-    # Save metadata.json inside the folder
-    metadata_path = f"{folder_name}/metadata.json"
-    with open(metadata_path, "w") as f:
-        json.dump(metadata, f, indent=4)
-
-    # Create ZIP file with formatted name
-    shutil.make_archive(folder_name, 'zip', folder_name)
-    shutil.move(f"{folder_name}.zip", zip_path)  # Move ZIP to storage directory
-
-    # Cleanup: remove temporary folder after zipping
-    shutil.rmtree(folder_name)
-
-    return FileResponse(zip_path, media_type='application/zip', filename=zip_filename)
+    logging.info(f"ZIP file ready for download: {zip_filename}")
+    return download_zip_file(zip_path, zip_filename)
