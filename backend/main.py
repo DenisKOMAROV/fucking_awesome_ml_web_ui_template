@@ -22,7 +22,9 @@ app.add_middleware(
 # Global variable for storing last selected user data
 LATEST_METADATA_FILE = "latest_metadata.json"
 UPLOADS_DIR = "uploads"
+STORAGE_DIR = "storage"
 os.makedirs(UPLOADS_DIR, exist_ok=True)
+os.makedirs(STORAGE_DIR, exist_ok=True)
 
 # Request model for selecting users
 class UserSelectionRequest(BaseModel):
@@ -85,7 +87,7 @@ def select_users(request: UserSelectionRequest):
     with open(LATEST_METADATA_FILE, "w") as f:
         json.dump(metadata, f, indent=4)
 
-    return JSONResponse(content=stats)
+    return JSONResponse(content={"stats": stats, "zip_filename": f"{timestamp}_{category}_user_groups.zip"})
 
 # Download User Groups - Generates CSV files and ZIP archive
 @app.get("/download_user_groups")
@@ -99,10 +101,9 @@ def download_user_groups():
     timestamp = metadata["datetime"]
     category = metadata["category"].replace(" ", "_")  # Ensure filename compatibility
     folder_name = f"{timestamp}_{category}"
-    storage_path = "storage"
-    os.makedirs(storage_path, exist_ok=True)  # Ensure storage directory exists
+    zip_filename = f"{folder_name}_user_groups.zip"
+    zip_path = os.path.join(STORAGE_DIR, zip_filename)
 
-    # Ensure folder exists for ZIP creation
     os.makedirs(folder_name, exist_ok=True)
 
     # Mock CSV file contents
@@ -122,9 +123,7 @@ def download_user_groups():
     with open(metadata_path, "w") as f:
         json.dump(metadata, f, indent=4)
 
-    # Create ZIP file with formatted name inside `storage/`
-    zip_filename = f"{folder_name}_user_groups.zip"
-    zip_path = os.path.join(storage_path, zip_filename)
+    # Create ZIP file with formatted name
     shutil.make_archive(folder_name, 'zip', folder_name)
     shutil.move(f"{folder_name}.zip", zip_path)  # Move ZIP to storage directory
 

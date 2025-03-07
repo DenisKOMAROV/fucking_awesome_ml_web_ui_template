@@ -17,6 +17,7 @@ function App() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [filesGenerated, setFilesGenerated] = useState(false);
+  const [zipFilename, setZipFilename] = useState(null);  // ✅ Added missing useState
 
   // Upload UID file to backend
   const handleFileUpload = async (file) => {
@@ -47,7 +48,8 @@ function App() {
         file_id: fileId,
       });
 
-      setStats(response.data);
+      setStats(response.data.stats);
+      setZipFilename(response.data.zip_filename);  // ✅ Store zip filename for download
       setFilesGenerated(true);
     } catch (error) {
       console.error("Error selecting users:", error);
@@ -59,21 +61,16 @@ function App() {
 
   // Download user groups ZIP file
   const handleDownloadGroups = async () => {
-    if (!filesGenerated) return;
-  
+    if (!filesGenerated || !zipFilename) return;
+
     try {
       const response = await axios.get(`${API_BASE_URL}/download_user_groups`, { responseType: "blob" });
-  
-      // Extract filename from Content-Disposition header
-      const contentDisposition = response.headers["content-disposition"];
-      const match = contentDisposition && contentDisposition.match(/filename="(.+)"/);
-      const filename = match ? match[1] : "user_groups.zip";  // Fallback to default name
-  
-      // Create a download link
+
+      // Use backend-provided filename
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", filename);
+      link.setAttribute("download", zipFilename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -82,7 +79,6 @@ function App() {
       alert("Failed to download user groups.");
     }
   };
-  
 
   return (
     <div className="h-screen bg-black text-green-500 flex flex-col items-center justify-start space-y-10 p-10">
@@ -124,7 +120,7 @@ function App() {
         <Button text={loading ? "Loading..." : "Select Users"} onClick={handleSelectUsers} />
         <button
           onClick={handleDownloadGroups}
-          disabled={!filesGenerated}
+          disabled={!filesGenerated || !zipFilename}
           className={`px-6 py-2 text-lg border ${filesGenerated ? "bg-black text-green-500 border-green-500 hover:bg-green-500 hover:text-black transition" : "border-gray-500 text-gray-500 cursor-not-allowed"}`}
         >
           ❯ Download User Groups
