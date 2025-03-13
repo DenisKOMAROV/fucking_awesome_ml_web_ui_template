@@ -5,7 +5,7 @@ import Slider from "./components/Slider";
 import FileUpload from "./components/FileUpload";
 import TextBox from "./components/TextBox";
 import Button from "./components/Button";
-// import { Toaster, toast } from "./components/ui/toaster"; // ✅ Import Chakra Toaster
+import { Toaster, toaster } from "./components/ui/toaster"; // ✅ Corrected import
 
 
 const API_BASE_URL = "http://localhost:8000"; // Backend URL
@@ -22,11 +22,12 @@ function App() {
   const [zipFilename, setZipFilename] = useState(null);
   const [fileUploading, setFileUploading] = useState(false);
 
-  // Upload UID file to backend
+  // ✅ Upload UID file to backend with Toaster notifications
   const handleFileUpload = async (file) => {
     console.log("Uploading file:", file.name);
     setFileUploading(true);
     setFileId(null); // Reset fileId to disable Select Users during upload
+
     const formData = new FormData();
     formData.append("uid_file", file);
 
@@ -34,44 +35,37 @@ function App() {
       const response = await axios.post(`${API_BASE_URL}/upload_uid_file`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
       console.log("File uploaded successfully, received fileId:", response.data.file_id);
-      
       if (response.data.file_id) {
-        console.log("✅ Received valid fileId:", response.data.file_id);
         setFileId(response.data.file_id);
+
+        toaster.create({
+          title: "File Uploaded",
+          description: `${file.name} uploaded successfully!`,
+          type: "success",
+        });
       } else {
         console.error("❌ fileId is missing in backend response:", response.data);
       }
-      
-      // alert("File uploaded successfully!");
-      // toast({
-      //   title: "File Uploaded",
-      //   description: `${file.name} uploaded successfully!`,
-      //   status: "success",
-      //   duration: 3000,
-      //   isClosable: true,
-      // });
-
-      // toaster.create({
-      //   title: "Test Toast",
-      //   description: "This is a test notification.",
-      //   type: "success",
-      // });
-      
     } catch (error) {
       console.error("Error uploading file:", error);
-      alert("Failed to upload file.");
+      toaster.create({
+        title: "Upload Failed",
+        description: "Something went wrong while uploading the file.",
+        type: "error",
+      });
     } finally {
       setFileUploading(false);
     }
   };
 
-  // Fetch stats from backend
+  // ✅ Fetch stats from backend with Toaster notifications
   const handleSelectUsers = async () => {
     console.log("Attempting to select users with fileId:", fileId);
     if (!fileId) {
       console.warn("Select Users button clicked, but no fileId is set.");
-      return; // Prevent clicking before file is uploaded
+      return;
     }
     setLoading(true);
 
@@ -83,19 +77,29 @@ function App() {
         file_id: fileId,
       });
 
-      console.log("Users selected successfully, received stats:", response.data.stats);
       setStats(response.data.stats);
       setZipFilename(response.data.zip_filename);
       setFilesGenerated(true);
+
+      toaster.create({
+        title: "Users Selected",
+        description: `User groups generated successfully.`,
+        type: "success",
+      });
+
     } catch (error) {
       console.error("Error selecting users:", error);
-      alert("Failed to select users.");
+      toaster.create({
+        title: "Selection Failed",
+        description: `Could not process user selection.`,
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Download user groups ZIP file
+  // ✅ Download user groups ZIP file with Toaster notifications
   const handleDownloadGroups = async () => {
     console.log("Attempting to download file:", zipFilename);
     if (!filesGenerated || !zipFilename) return;
@@ -103,7 +107,6 @@ function App() {
     try {
       const response = await axios.get(`${API_BASE_URL}/download_user_groups`, { responseType: "blob" });
 
-      // Use backend-provided filename
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -111,9 +114,20 @@ function App() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      toaster.create({
+        title: "Download Started",
+        description: "User groups ZIP is being downloaded.",
+        type: "success",
+      });
+
     } catch (error) {
       console.error("Error downloading user groups:", error);
-      alert("Failed to download user groups.");
+      toaster.create({
+        title: "Download Failed",
+        description: "Could not download user groups ZIP.",
+        type: "error",
+      });
     }
   };
 
@@ -135,15 +149,14 @@ function App() {
         </div>
 
         <div className="w-1/3 text-center space-y-4">
-          <h2 className="text-2xl">❯ Upload UID File </h2>
+          <h2 className="text-2xl">❯ Upload UID File</h2>
           <p className="text-green-500">Select File (CSV, JSON, XLS)</p>
           <FileUpload onFileSelect={handleFileUpload} fileUploading={fileUploading} />
         </div>
       </div>
 
-      {/* Display Stats (After Selecting Users) */}
       {stats && (
-        <div className="w-full text-left border border-green-500 rounded  p-5 mt-2 space-y-0 space-x-6">
+        <div className="w-full text-left border border-green-500 rounded p-5 mt-2">
           <h2 className="text-xl">❯ Stats Summary</h2>
           <p>Total Users: {stats.total_users}</p>
           <p>Expected Open Rate: {stats.expected_open_rate}%</p>
@@ -159,9 +172,7 @@ function App() {
           disabled={!fileId || fileUploading || loading}
           className={`px-6 py-2 text-lg border ${!fileId || fileUploading || loading ? "border-gray-500 text-gray-500 cursor-not-allowed" : "bg-black text-green-500 border-green-500 hover:bg-green-500 hover:text-black transition"}`}
         >
-          {/* ❯ Select Users */}
           {loading ? "❯ Loading..." : "❯ Select Users"}
-
         </button>
 
         <button
@@ -172,6 +183,9 @@ function App() {
           ❯ Download User Groups
         </button>
       </div>
+
+      {/* ✅ Render the Toaster Component */}
+      <Toaster />
     </div>
   );
 }
