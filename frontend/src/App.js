@@ -5,6 +5,8 @@ import Slider from "./components/Slider";
 import FileUpload from "./components/FileUpload";
 import TextBox from "./components/TextBox";
 import Button from "./components/Button";
+// import { Toaster, toast } from "./components/ui/toaster"; // ✅ Import Chakra Toaster
+
 
 const API_BASE_URL = "http://localhost:8000"; // Backend URL
 
@@ -38,10 +40,24 @@ function App() {
         console.log("✅ Received valid fileId:", response.data.file_id);
         setFileId(response.data.file_id);
       } else {
-          console.error("❌ fileId is missing in backend response:", response.data);
+        console.error("❌ fileId is missing in backend response:", response.data);
       }
       
-      alert("File uploaded successfully!");
+      // alert("File uploaded successfully!");
+      // toast({
+      //   title: "File Uploaded",
+      //   description: `${file.name} uploaded successfully!`,
+      //   status: "success",
+      //   duration: 3000,
+      //   isClosable: true,
+      // });
+
+      // toaster.create({
+      //   title: "Test Toast",
+      //   description: "This is a test notification.",
+      //   type: "success",
+      // });
+      
     } catch (error) {
       console.error("Error uploading file:", error);
       alert("Failed to upload file.");
