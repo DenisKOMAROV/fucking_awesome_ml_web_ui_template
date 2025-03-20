@@ -22,17 +22,17 @@ function App() {
   const [zipFilename, setZipFilename] = useState(null);
   const [fileUploading, setFileUploading] = useState(false);
 
-  // ✅ Upload UID file to backend with Toaster notifications
+  // ✅ Upload CPID file to backend with Toaster notifications
   const handleFileUpload = async (file) => {
     console.log("Uploading file:", file.name);
     setFileUploading(true);
     setFileId(null); // Reset fileId to disable Select Users during upload
 
     const formData = new FormData();
-    formData.append("uid_file", file);
+    formData.append("cpid_file", file);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/upload_uid_file`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/upload_cpid_file`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -149,7 +149,7 @@ function App() {
         </div>
 
         <div className="w-1/3 text-center space-y-4">
-          <h2 className="text-2xl">❯ Upload UID File</h2>
+          <h2 className="text-2xl">❯ Upload CPID File</h2>
           <p className="text-green-500">Select File (CSV, JSON, XLS)</p>
           <FileUpload onFileSelect={handleFileUpload} fileUploading={fileUploading} />
         </div>

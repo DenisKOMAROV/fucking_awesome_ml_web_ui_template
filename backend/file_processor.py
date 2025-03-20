@@ -20,33 +20,57 @@ wa_file_content_mockup = "id,phone\n1,+1234567890\n2,+0987654321"
 ignore_file_content_mockup = "id,reason\n1,No interaction\n2,Opted out"
 
 
-def read_uid_file(file_path):
-    """ Reads UID file and returns a list of UIDs. Supports CSV, JSON, and XLSX. """
-    logging.info(f"Attempting to read UID file: {file_path}")
+def read_cpid_file(file_path):
+    """ Reads CPID file and returns a list of CPIDs. Supports CSV, JSON, and XLSX. """
+    logging.info(f"Attempting to read CPID file: {file_path}")
 
     try:
         if file_path.endswith(".csv"):
-            df = pd.read_csv(file_path, usecols=["Uid"])  # Read only 'Uid' column
+            df = pd.read_csv(file_path)  
+
         elif file_path.endswith(".json"):
             with open(file_path, "r") as f:
                 data = json.load(f)
-            df = pd.DataFrame(data, columns=["Uid"])  # Ensure only 'Uid' column is read
+            df = pd.DataFrame(data)  
         elif file_path.endswith(".xlsx"):
-            df = pd.read_excel(file_path, engine="openpyxl", usecols=["Uid"])  # Read only 'Uid' column
+            df = pd.read_excel(file_path, engine="openpyxl")
         else:
             logging.error(f"Unsupported file format: {file_path}")
             raise ValueError("Unsupported file format. Please upload CSV, JSON, or XLSX.")
 
-        # Ensure 'Uid' column exists
-        if "Uid" not in df.columns:
-            logging.error(f"Invalid file format, missing 'Uid' column: {file_path}")
-            raise ValueError("Invalid file format. Missing 'Uid' column.")
+        logging.info(f"Columns: {df.columns}")
+        
+        # Ensure 'clientID' column exists
+        if "Клиент" in df.columns:
+            df.rename(columns={"Клиент": "clientID"}, inplace=True)
+            df = df[["clientID"]]
 
-        logging.info(f"Successfully read {len(df)} UIDs from file: {file_path}")
-        return df["Uid"].tolist()
+        # If there's only one column, rename it to clientID regardless of original name
+        if len(df.columns) == 1:
+            df.columns = ['clientID']
+
+        # Ensure 'clientID' column exists
+        if "clientID" not in df.columns:
+            logging.error(f"Invalid file format, missing 'clientID' column: {file_path}")
+            raise ValueError("Invalid file format. Missing 'clientID' column.")
+
+        # Check if clientIDs have the expected format (containing hyphens)
+        sample_ids = df['clientID'].head().tolist()
+        has_hyphens = any('-' in str(id) for id in sample_ids)
+        
+        if not has_hyphens:
+            logging.warning(
+                f"ClientIDs are in incorrect format - no hyphens found in sample: {sample_ids}. "
+                "Expected format example: 'ABCD1234-AB12-CD34-5678-000123ABC456'"
+            )
+            raise ValueError("ClientIDs are in incorrect format. Please upload a file with the correct format.")
+        
+        logging.info(f"Successfully read {len(df)} CPIDs from file: {file_path}")
+        return df["clientID"].tolist()
+    
 
     except Exception as e:
-        logging.error(f"Error reading UID file: {str(e)}")
+        logging.error(f"Error reading CPID file: {str(e)}")
         raise
 
 

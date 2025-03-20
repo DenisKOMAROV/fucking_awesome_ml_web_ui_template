@@ -7,7 +7,7 @@ import time
 import json
 import logging
 from datetime import datetime
-from file_processor import read_uid_file, save_metadata, generate_user_group_files, create_zip_file, download_zip_file
+from file_processor import read_cpid_file, save_metadata, generate_user_group_files, create_zip_file, download_zip_file
 
 # Get the absolute directory of main.py
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -41,11 +41,11 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-# Store uploaded UID file content in memory
+# Store uploaded CPID file content in memory
 database = {
     "timestamp": None,
     "stats": None,  # Store stats after selecting users
-    "uids": None,
+    "cpids": None,
     "category": None,  # Store category selected
     "newsletter_content": None,  # Store newsletter content
     "file_id": None,  # Store file_id
@@ -67,19 +67,19 @@ class UserSelectionRequest(BaseModel):
     newsletter_content: str = None
     file_id: str = None  # Reference to uploaded file
 
-# Upload UID File separately and store in memory
-@app.post("/upload_uid_file")
-def upload_uid_file(uid_file: UploadFile = File(...)):
-    # get uid file
-    # read uid file
-    # store uid file in memory
+# Upload CPID File separately and store in memory
+@app.post("/upload_cpid_file")
+def upload_cpid_file(cpid_file: UploadFile = File(...)):
+    # get cpid file
+    # read cpid file
+    # store cpid file in memory
     # return file_id
     try:
-        file_id = os.path.join(UPLOADS_DIR, uid_file.filename)  # ✅ Standardized file_id
+        file_id = os.path.join(UPLOADS_DIR, cpid_file.filename)  # ✅ Standardized file_id
         with open(file_id, "wb") as buffer:
-            buffer.write(uid_file.file.read())
+            buffer.write(cpid_file.file.read())
 
-        database["uids"] = read_uid_file(file_id)
+        database["cpids"] = read_cpid_file(file_id)
         database["file_id"] = file_id
 
         logging.info(f"File uploaded successfully: {file_id}")
@@ -88,16 +88,16 @@ def upload_uid_file(uid_file: UploadFile = File(...)):
         logging.error(f"Error processing file: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Error processing file: {str(e)}")
 
-# Select Users - Runs model inference using stored UID data
+# Select Users - Runs model inference using stored CPID data
 @app.post("/select_users")
 def select_users(request: UserSelectionRequest):
-    # check if uid file is uploaded
+    # check if cpid file is uploaded
     # if not, return error
     # if yes, continue
     # parse request -> into separate function
     # return stats to frontend, 
-    if database["uids"] is None:
-        raise HTTPException(status_code=400, detail="No UID file uploaded. Please upload a file first.")
+    if database["cpids"] is None:
+        raise HTTPException(status_code=400, detail="No CPID file uploaded. Please upload a file first.")
 
     time.sleep(5)
 
@@ -120,8 +120,8 @@ def select_users(request: UserSelectionRequest):
 # Download User Groups - Generates CSV files and ZIP archive
 @app.get("/download_user_groups")
 def download_user_groups():
-    if database["uids"] is None:
-        logging.error("No UID file uploaded. Cannot proceed with download.")
+    if database["cpids"] is None:
+        logging.error("No CPID file uploaded. Cannot proceed with download.")
         raise HTTPException(status_code=404, detail="No user selection data found. Run /select_users first.")
 
     logging.info(f"Generating user group files")
